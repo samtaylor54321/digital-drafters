@@ -1,18 +1,19 @@
 import argparse
 import dash
 from dash import html, callback, Output, Input, dash_table
-import xml.etree.ElementTree as ET
 from dash import dcc
 import os
 import json
 import pandas as pd
 import time
 
-with open("./assets/sample-notes.json", "r") as f:
+with open("./assets/sample-line-by-line.json", "r") as f:
     data = json.load(f)
     data = {outer_key: inner_dict for outer_key, inner_dict in data.items()}
     df = pd.DataFrame.from_dict(data, orient="index")
 
+with open("./assets/sample-summary.txt", "r") as f:
+    text = f.read()
 
 parser = argparse.ArgumentParser(description="Run the web app in demo mode.")
 parser.add_argument("--demo", action="store_true", help="Run the app in demo mode.")
@@ -88,7 +89,7 @@ def render_content(tab):
         return html.Div(
             style={
                 "fontFamily": "GDS Transport, Arial, sans-serif",
-                "backgroundColor": "#F3F2F1",
+                #                "backgroundColor": "#F3F2F1",
                 "color": "#0B0C0C",
                 "padding": "20px",
                 "textAlign": "center",
@@ -122,6 +123,9 @@ def render_content(tab):
                         "cursor": "pointer",
                     },
                 ),
+                html.Br(),
+                html.Div(id="output-text"),
+                html.Br(),
                 html.Div(id="output-table", style={"marginBottom": "20px"}),
             ],
         )
@@ -134,25 +138,81 @@ def render_content(tab):
     if (tab == "tab-2") & (os.environ.get("DEMO_MODE") == "1"):
 
         return html.Div(
-            className="pdf-container",
+            style={
+                "fontFamily": "GDS Transport, Arial, sans-serif",
+                #                "backgroundColor": "#F3F2F1",
+                "color": "#0B0C0C",
+                "padding": "20px",
+                "textAlign": "center",
+            },
             children=[
-                html.ObjectEl(
-                    data="assets/samplepdf.pdf",
-                    type="application/pdf",
-                    style={"width": "800px", "height": "600px"},
+                html.H1(
+                    "Enter URL of the Policy Instructions",
+                    style={"marginBottom": "20px", "color": "#000000"},
                 ),
+                dcc.Input(
+                    id="url-input",
+                    type="text",
+                    placeholder="Enter URL",
+                    style={
+                        "marginBottom": "20px",
+                        "padding": "8px",
+                        "width": "50%",
+                        "border": "1px solid #000000",
+                    },
+                ),
+                html.Button(
+                    "Upload File",
+                    id="upload-button",
+                    n_clicks=0,
+                    style={
+                        "marginBottom": "20px",
+                        "backgroundColor": "#000000",
+                        "color": "#FFFFFF",
+                        "border": "none",
+                        "padding": "10px 20px",
+                        "cursor": "pointer",
+                    },
+                ),
+                html.Br(),
+                html.Div(
+                    id="output-pdf",
+                    className="pdf-container",
+                ),
+                html.Br(),
             ],
         )
+
+        # return
 
     elif tab == "tab-2":
         return html.Div("This is Tab 2")
 
 
 @app.callback(
+    dash.dependencies.Output("output-text", "children"),
+    [dash.dependencies.Input("summit-button", "n_clicks")],
+)
+def update_output_text(n_clicks):
+    if n_clicks > 0:
+        time.sleep(1)
+
+        return html.Div(
+            [
+                html.H3("Overall Summary", style={"marginBottom": "20px"}),
+                html.Br(),
+                dcc.Markdown(f"```\n{text}\n```"),
+            ]
+        )
+    else:
+        return None
+
+
+@app.callback(
     dash.dependencies.Output("output-table", "children"),
     [dash.dependencies.Input("submit-button", "n_clicks")],
 )
-def update_output(n_clicks):
+def update_output_table(n_clicks):
     if n_clicks > 0:
         # Create DataTable
         table = dash_table.DataTable(
@@ -167,9 +227,30 @@ def update_output(n_clicks):
             },  # Center align the cells in the table
         )
 
+        table = html.Div([html.H3("Line by Line Summary"), html.Br(), table])
+
         time.sleep(1)
 
         return table
+    else:
+        return None
+
+
+@app.callback(
+    dash.dependencies.Output("output-pdf", "children"),
+    [dash.dependencies.Input("upload-button", "n_clicks")],
+)
+def update_output_pdf(n_clicks):
+    if n_clicks > 0:
+        time.sleep(1)
+
+        return (
+            html.ObjectEl(
+                data="assets/sample-legislation.pdf",
+                type="application/pdf",
+                style={"width": "800px", "height": "600px"},
+            ),
+        )
     else:
         return None
 
