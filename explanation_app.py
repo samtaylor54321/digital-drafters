@@ -15,47 +15,69 @@ client = Anthropic(
    api_key = os.getenv('ANTHROPIC_API_KEY') # this is my colab setup: update to relevant key location
 )
 
-def get_explanation(url, max_section=5):
-
-    """
-    Retrieves and parses the content of a specified URL to extract specific sections, then
-    generates layman's explanations for these sections using the Claude Haiku model.
-
-    This function fetches the webpage content from the given URL and parses it as XML using BeautifulSoup.
-    It then prints the page title if the HTTP response is successful. It extracts IDs for specific sections
-    labeled as 'P1group' and limits the number of sections based on the 'max_section' parameter.
-    For each section, it fetches the original text and sends it to the Claude Haiku model for generating a simplified explanation.
-    The original texts along with their explanations are saved in a nested dictionary and written to a file.
-
-    Args:
-        url (str): The URL of the webpage to fetch and parse.
-        max_section (int, optional): The maximum number of sections to process. Defaults to 5.
-
-    Outputs:
-        Creates or overwrites a file named 'output_problem1.txt' containing the original text and its explanation in JSON format.
-    
-    Raises:
-        requests.exceptions.RequestException: If an error occurs during the HTTP request.
-        bs4.BeautifulSoup exceptions: If an error occurs during parsing of the HTML/XML.
-
-    Note:
-        The function assumes access to an external API client 'client' configured for Claude Haiku,
-        and uses the 'requests' and 'BeautifulSoup' libraries for HTTP requests and parsing, respectively.
-    """
-
-    # get url content
+# function to get summary of a bill up to a section
+def get_summary(url, max_section=7):
+        # get url content
     response = requests.get(url)
 
     # parse the content
-    soup = BeautifulSoup(response.text, 'xml')
+    bill = BeautifulSoup(response.text, 'xml')
 
     # check if the response is ok
     if response.ok:
         print("Successfully retrieved the following:")
-        print(soup.title.string)
+        print(bill.title.string)
+
 
     # get the sections
-    section_ids = [section.P1.get("id") for section in soup.find_all("P1group")]
+    section_ids = [section.P1.get("id") for section in bill.find_all("P1group")]
+    section_ids = [section for section in section_ids[0:max_section] if section is not None]
+
+    # define prompt
+    prompt = f"Please summarise the {bill.title.string}, sections 1 - {max_section}, which is included below, so it's understandable for a policy expert who is not a legal expert. The commentary must never simply restate what the bill says, but should stand back from the detail of the provision and try to summarise it in one or two sentences, using everyday language. The notes must be neutral in tone (ie they do not go into political lines about the merits of the policy, though the practical outcomes should be spelled out), written in plain language, with short sentences and paragraphs. It is important to avoid jargon and to explain the meaning of any technical or legal terms and any acronyms or other abbreviations. The purpose of the commentary is also to add value – what will it be helpful for the reader to know that is not apparent from reading the bill itself. In your output, start with the name of the bill and the sections included in the summary. Do not include an acknowledgement of this prompt, nor say 'the summary of this bill is':\n"
+
+    # loop over sections up to max_section, get text from bill and add them to a single string
+    prompt = ''
+    for i in range(max_section):
+        original_text = bill.find(id=section_ids[i]).get_text(" ")
+        # add to earlier sections
+        prompt += original_text
+
+    
+    message = client.messages.create(
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        model="claude-3-haiku-20240307",
+    )
+
+    out_text = message.to_dict()['content'][0].get('text', '')
+
+    print(out_text)
+
+    # return the output
+    with open('summary.txt', 'w') as file:
+      file.write(out_text)
+
+def get_line_by_line_summary(url, max_section=5):
+
+    response = requests.get(url)
+
+    # parse the content
+    bill = BeautifulSoup(response.text, 'xml')
+
+    # check if the response is ok
+    if response.ok:
+        print("Successfully retrieved the following:")
+        print(bill.title.string)
+
+
+    # get the sections
+    section_ids = [section.P1.get("id") for section in bill.find_all("P1group")]
     section_ids = [section for section in section_ids[0:max_section] if section is not None]
 
     # define prompt
@@ -65,7 +87,7 @@ def get_explanation(url, max_section=5):
     nested_output = {}
 
     for i in range(max_section):
-        original_text = soup.find(id=section_ids[i]).get_text(" ")
+        original_text = bill.find(id=section_ids[i]).get_text(" ")
         prompt_text = f"{prompt}{original_text}"
 
         message = client.messages.create(
@@ -86,11 +108,13 @@ def get_explanation(url, max_section=5):
             'explanation': out_text
         }
 
+    print(nested_output)
+    
     # return the output
-    with open('output_problem1.txt', 'w') as file:
+    with open('line_by_line_summary.txt', 'w') as file:
       file.write(json.dumps(nested_output))
-
 
 # example
 url = "https://www.legislation.gov.uk/ukpga/1968/60/data.xml"
-get_explanation(url, max_section=5)
+get_summary(url)
+get_line_by_line_summary(url)
