@@ -1,0 +1,27 @@
+.banner {
+    background-color: black;
+    color: white;
+    padding: 10px;
+    height: 100px;
+    text-align: center;
+}
+
+.ribbon {
+    background-color: 	#1d70b8;
+    height: 10px;
+    margin-top: -5px;
+}
+
+.logo-container {
+    position: absolute;
+    left: 20px;
+    margin-top: 20px;
+}
+
+.app-title {
+    font-family: Arial, sans-serif;
+    position: absolute;
+    margin-top: 40px;
+    left: 80px;
+    font-size: 24px;
+}
