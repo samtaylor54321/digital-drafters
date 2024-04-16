@@ -6,6 +6,7 @@ import os
 import json
 import pandas as pd
 import time
+from src.explanation_app import get_summary, get_line_by_line_summary
 
 with open("./assets/sample-line-by-line.json", "r") as f:
     data = json.load(f)
@@ -89,7 +90,6 @@ def render_content(tab):
         return html.Div(
             style={
                 "fontFamily": "GDS Transport, Arial, sans-serif",
-                #                "backgroundColor": "#F3F2F1",
                 "color": "#0B0C0C",
                 "padding": "20px",
                 "textAlign": "center",
@@ -140,7 +140,6 @@ def render_content(tab):
         return html.Div(
             style={
                 "fontFamily": "GDS Transport, Arial, sans-serif",
-                #                "backgroundColor": "#F3F2F1",
                 "color": "#0B0C0C",
                 "padding": "20px",
                 "textAlign": "center",
@@ -191,49 +190,94 @@ def render_content(tab):
 
 @app.callback(
     dash.dependencies.Output("output-text", "children"),
-    [dash.dependencies.Input("summit-button", "n_clicks")],
+    [
+        dash.dependencies.Input("submit-button", "n_clicks"),
+        dash.dependencies.Input("input-url", "value"),
+    ],
 )
-def update_output_text(n_clicks):
-    if n_clicks > 0:
-        time.sleep(1)
+def update_output_text(n_clicks, value):
+    if os.environ.get("DEMO_MODE") == "1":
+        if n_clicks > 0:
+            content = html.Div(
+                [
+                    html.H3("Overall Summary", style={"marginBottom": "20px"}),
+                    html.Br(),
+                    dcc.Markdown(f"```\n{text}\n```"),
+                ]
+            )
+            time.sleep(1)
 
-        return html.Div(
-            [
-                html.H3("Overall Summary", style={"marginBottom": "20px"}),
-                html.Br(),
-                dcc.Markdown(f"```\n{text}\n```"),
-            ]
-        )
+            return content
+        else:
+            return None
     else:
-        return None
+        if n_clicks > 0:
+            text = get_summary(value)
+
+            content = html.Div(
+                [
+                    html.H3("Overall Summary", style={"marginBottom": "20px"}),
+                    html.Br(),
+                    dcc.Markdown(f"```\n{text}\n```"),
+                ]
+            )
+
+            return content
+        else:
+            return None
 
 
 @app.callback(
     dash.dependencies.Output("output-table", "children"),
-    [dash.dependencies.Input("submit-button", "n_clicks")],
+    [
+        dash.dependencies.Input("submit-button", "n_clicks"),
+        dash.dependencies.Input("input-url", "value"),
+    ],
 )
-def update_output_table(n_clicks):
-    if n_clicks > 0:
-        # Create DataTable
-        table = dash_table.DataTable(
-            id="table",
-            columns=[{"name": i, "id": i} for i in df.columns],
-            data=df.to_dict("records"),
-            style_cell={
-                "textAlign": "center",
-                "minWidth": "100px",
-                "maxWidth": "300px",
-                "whiteSpace": "normal",
-            },  # Center align the cells in the table
-        )
+def update_output_table(n_clicks, value):
+    if os.environ.get("DEMO_MODE") == "1":
+        if n_clicks > 0:
+            # Create DataTable
+            table = dash_table.DataTable(
+                id="table",
+                columns=[{"name": i, "id": i} for i in df.columns],
+                data=df.to_dict("records"),
+                style_cell={
+                    "textAlign": "center",
+                    "minWidth": "100px",
+                    "maxWidth": "300px",
+                    "whiteSpace": "normal",
+                },  # Center align the cells in the table
+            )
 
-        table = html.Div([html.H3("Line by Line Summary"), html.Br(), table])
+            table = html.Div([html.H3("Line by Line Summary"), html.Br(), table])
 
-        time.sleep(1)
+            time.sleep(1)
 
-        return table
+            return table
+        else:
+            return None
     else:
-        return None
+        if n_clicks > 0:
+            new_df = get_line_by_line_summary(value)
+
+            table = dash_table.DataTable(
+                id="table",
+                columns=[{"name": i, "id": i} for i in new_df.columns],
+                data=new_df.to_dict("records"),
+                style_cell={
+                    "textAlign": "center",
+                    "minWidth": "100px",
+                    "maxWidth": "300px",
+                    "whiteSpace": "normal",
+                },  # Center align the cells in the table
+            )
+
+            table = html.Div([html.H3("Line by Line Summary"), html.Br(), table])
+
+            return table
+        else:
+            return None
 
 
 @app.callback(
@@ -242,7 +286,7 @@ def update_output_table(n_clicks):
 )
 def update_output_pdf(n_clicks):
     if n_clicks > 0:
-        time.sleep(1)
+        time.sleep(5)
 
         return (
             html.ObjectEl(
