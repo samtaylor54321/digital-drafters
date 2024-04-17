@@ -6,6 +6,10 @@ import os
 import json
 import pandas as pd
 import time
+import dotenv
+
+dotenv.load_dotenv()
+
 from src.explanation_app import get_summary, get_line_by_line_summary
 
 with open("./assets/sample-line-by-line.json", "r") as f:
@@ -85,7 +89,7 @@ app.layout = html.Div(
 
 @callback(Output("tab-content-1", "children"), [Input("tabs", "value")])
 def render_content(tab):
-    if (tab == "tab-1") & (os.environ.get("DEMO_MODE") == "1"):
+    if tab == "tab-1":
 
         return html.Div(
             style={
@@ -129,13 +133,11 @@ def render_content(tab):
                 html.Div(id="output-table", style={"marginBottom": "20px"}),
             ],
         )
-    elif tab == "tab-1":
-        return html.Div("Not Implemented")
 
 
 @callback(Output("tab-content-2", "children"), [Input("tabs", "value")])
 def render_content(tab):
-    if (tab == "tab-2") & (os.environ.get("DEMO_MODE") == "1"):
+    if tab == "tab-2":
 
         return html.Div(
             style={
@@ -182,17 +184,12 @@ def render_content(tab):
             ],
         )
 
-        # return
-
-    elif tab == "tab-2":
-        return html.Div("This is Tab 2")
-
 
 @app.callback(
     dash.dependencies.Output("output-text", "children"),
     [
         dash.dependencies.Input("submit-button", "n_clicks"),
-        dash.dependencies.Input("input-url", "value"),
+        dash.dependencies.Input("url-input", "value"),
     ],
 )
 def update_output_text(n_clicks, value):
@@ -231,7 +228,7 @@ def update_output_text(n_clicks, value):
     dash.dependencies.Output("output-table", "children"),
     [
         dash.dependencies.Input("submit-button", "n_clicks"),
-        dash.dependencies.Input("input-url", "value"),
+        dash.dependencies.Input("url-input", "value"),
     ],
 )
 def update_output_table(n_clicks, value):
@@ -260,6 +257,9 @@ def update_output_table(n_clicks, value):
     else:
         if n_clicks > 0:
             new_df = get_line_by_line_summary(value)
+
+            new_df = {outer_key: inner_dict for outer_key, inner_dict in new_df.items()}
+            new_df = pd.DataFrame.from_dict(new_df, orient="index")
 
             table = dash_table.DataTable(
                 id="table",
@@ -300,4 +300,4 @@ def update_output_pdf(n_clicks):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)
